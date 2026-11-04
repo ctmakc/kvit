@@ -4,7 +4,7 @@
 
 EMBER2026 community-choice address (CashTokens): `bitcoincash:zpln0flvp7gcx6qncy6rrrtj8eqnzman3syf09q2eq`
 
-Built from scratch for **BCH BLAZE 2026** (November 2026). There is no earlier version of this project.
+Started for **BCH BLAZE 2026** as preparation work in early November 2026. Per the BLAZE rules the repo will be forked on **November 14**; the banner and this README will then link the starting snapshot (demo + code), and judging covers the work from November 14 to 22.
 
 ---
 

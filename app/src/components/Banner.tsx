@@ -22,7 +22,7 @@ export function Banner() {
         EMBER2026 votes: <span className="mono">{EMBER_ADDRESS.slice(12, 18)}…{EMBER_ADDRESS.slice(-5)}</span>
         <em>{copied ? "copied" : "copy"}</em>
       </button>
-      <span className="banner-new">Built new during the hackathon (Nov 2026), no prior version.</span>
+      <span className="banner-new">Prep build before the Nov 14 start. The Nov 14 starting snapshot (demo and code) will be linked here.</span>
     </div>
   );
 }
