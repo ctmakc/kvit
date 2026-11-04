@@ -1,10 +1,10 @@
 ## Kvit — payment links for Bitcoin Cash
 
-**Live demo:** https://kvit-cash.pages.dev
-**Video (53 s):** https://youtu.be/iXSKTpkBw7Y
-**Presentation (Widget Factory template):** https://docs.google.com/presentation/d/1PJADVM7GjKn9ahjaYWb9c3Cs67QG2V_ECQD1o81QHUQ/edit?usp=sharing
-**Source (MIT):** https://github.com/ctmakc/kvit
-**EMBER2026 address:** bitcoincash:zpln0flvp7gcx6qncy6rrrtj8eqnzman3syf09q2eq
+- **Live demo:** https://kvit-cash.pages.dev
+- **Video (53 s):** https://youtu.be/iXSKTpkBw7Y
+- **Presentation (Widget Factory template):** https://docs.google.com/presentation/d/1PJADVM7GjKn9ahjaYWb9c3Cs67QG2V_ECQD1o81QHUQ/edit?usp=sharing
+- **Source (MIT):** https://github.com/ctmakc/kvit
+- **EMBER2026 address:** bitcoincash:zpln0flvp7gcx6qncy6rrrtj8eqnzman3syf09q2eq
 
 Prep build made before the hackathon window. On November 14 the repo is forked and the starting snapshot (demo + code) gets linked in the site banner, as the BLAZE rules ask.
 
