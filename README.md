@@ -43,7 +43,7 @@ To try your own ticket: switch to **Mainnet**, paste your address, set $0.10, cr
 Real WizardConnect relay, real signing wallet, real chipnet transactions:
 
 - `e0d49f5c522db55f653e046c723adeed468327e54f8545e6e58215cb26223f8a` (local build)
-- `4a70a865…` (production build on kvit-cash.pages.dev)
+- `4a70a865a2229fbe76ec01ff5316d788ae1ebcae31924dbd1ad0e5a801a315be` (production build on kvit-cash.pages.dev)
 
 Insufficient-funds, wrong-network address and broken-link states are handled in the UI.
 

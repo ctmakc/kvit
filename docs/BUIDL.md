@@ -21,7 +21,7 @@ Freelancers and small shops get paid by sending a link: Stripe, PayPal, Interac.
 - Any judge can make a useful mainnet BCH transaction: open the demo, press **"Open the 0.0002 BCH tip-jar ticket"** and pay it (about 5 US cents), or make a $0.10 ticket to your own address.
 - WizardConnect integration: Kvit derives receive and change addresses from the shared xpubs (gap 20), selects UTXOs (token UTXOs are skipped), builds the transaction with libauth and sends `sign_transaction_request`. Keys stay in the wallet.
 - Top-of-page banner with presentation, source code and the EMBER2026 CashTokens address.
-- Tested end to end on chipnet with a real signing WizardConnect wallet; production build tx `4a70a865…`.
+- Tested end to end on chipnet with a real signing WizardConnect wallet; production build tx `4a70a865a2229fbe76ec01ff5316d788ae1ebcae31924dbd1ad0e5a801a315be`.
 
 ### Key details
 - The last three digits of the satoshi amount identify the ticket, so one address can carry many open tickets and a refreshed page still finds its payment.
