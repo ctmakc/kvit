@@ -1,0 +1,11 @@
+import { ElectrumClient } from '@electrum-cash/network';
+import { ElectrumWebSocket } from '@electrum-cash/web-socket';
+import * as L from '@bitauth/libauth';
+const [host, addr] = process.argv.slice(2);
+const c = new ElectrumClient('kvit', '1.4.3', new ElectrumWebSocket(host, { port: 50004, encrypted: true, timeoutInMilliSeconds: 8000 }));
+await c.connect();
+const lb = L.cashAddressToLockingBytecode(addr).bytecode;
+const sh = L.binToHex(L.sha256.hash(lb).slice().reverse());
+console.log('history', JSON.stringify(await c.request('blockchain.scripthash.get_history', sh)));
+console.log('balance', JSON.stringify(await c.request('blockchain.scripthash.get_balance', sh)));
+process.exit(0);
