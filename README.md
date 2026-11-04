@@ -1,6 +1,6 @@
 # Kvit — payment links for Bitcoin Cash
 
-**Live demo: https://kvit-cash.pages.dev** · Presentation (BCH BLAZE Widget Factory template): [Google Slides](https://docs.google.com/presentation/d/1PJADVM7GjKn9ahjaYWb9c3Cs67QG2V_ECQD1o81QHUQ/edit?usp=sharing) · [PDF](docs/kvit-widget-factory.pdf)
+**Live demo: https://kvit-cash.pages.dev** · Video (53 s): https://youtu.be/iXSKTpkBw7Y · Presentation (BCH BLAZE Widget Factory template): [Google Slides](https://docs.google.com/presentation/d/1PJADVM7GjKn9ahjaYWb9c3Cs67QG2V_ECQD1o81QHUQ/edit?usp=sharing) · [PDF](docs/kvit-widget-factory.pdf)
 
 EMBER2026 community-choice address (CashTokens): `bitcoincash:zpln0flvp7gcx6qncy6rrrtj8eqnzman3syf09q2eq`
 

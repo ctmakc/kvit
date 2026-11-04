@@ -4,3 +4,4 @@ vendor/
 .wrangler/
 *.log
 .env*
+video/out/
