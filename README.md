@@ -4,7 +4,7 @@
 
 EMBER2026 community-choice address (CashTokens): `bitcoincash:zpln0flvp7gcx6qncy6rrrtj8eqnzman3syf09q2eq`
 
-Started for **BCH BLAZE 2026** as preparation work in early November 2026. Per the BLAZE rules the repo will be forked on **November 14**; the banner and this README will then link the starting snapshot (demo + code), and judging covers the work from November 14 to 22.
+> **BCH BLAZE 2026 fork rule.** Code before November 14 is pre-hackathon work: commit [`bec7d02`](https://github.com/ctmakc/kvit/tree/bec7d02f5e2bd85c23240fcf7cd3d06d65a55629) (tag `pre-blaze-1114`), frozen demo at https://pre-blaze.kvit-cash.pages.dev. Work that counts for judging is November 14–22 on branch [`blaze-1114`](https://github.com/ctmakc/kvit/tree/blaze-1114): [diff since the snapshot](https://github.com/ctmakc/kvit/compare/bec7d02...blaze-1114).
 
 ---
 

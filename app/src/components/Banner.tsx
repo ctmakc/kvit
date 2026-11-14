@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { EMBER_ADDRESS, REPO_URL, SLIDES_URL } from "../config";
+import { EMBER_ADDRESS, HACK_DIFF_URL, REPO_URL, SLIDES_URL, SNAPSHOT_CODE_URL, SNAPSHOT_COMMIT, SNAPSHOT_DEMO_URL } from "../config";
 
 export function Banner() {
   const [copied, setCopied] = useState(false);
@@ -22,7 +22,14 @@ export function Banner() {
         EMBER2026 votes: <span className="mono">{EMBER_ADDRESS.slice(12, 18)}…{EMBER_ADDRESS.slice(-5)}</span>
         <em>{copied ? "copied" : "copy"}</em>
       </button>
-      <span className="banner-new">Prep build before the Nov 14 start. The Nov 14 starting snapshot (demo and code) will be linked here.</span>
+      <span className="banner-new">
+        Code before Nov 14 is pre-hackathon:{" "}
+        <a href={SNAPSHOT_CODE_URL} target="_blank" rel="noreferrer">commit <span className="mono">{SNAPSHOT_COMMIT}</span></a>
+        {" · "}
+        <a href={SNAPSHOT_DEMO_URL} target="_blank" rel="noreferrer">snapshot demo</a>
+        . Judged work is Nov 14–22:{" "}
+        <a href={HACK_DIFF_URL} target="_blank" rel="noreferrer">what changed</a>
+      </span>
     </div>
   );
 }
