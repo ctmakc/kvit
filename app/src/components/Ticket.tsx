@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { NETWORKS, type Invoice, invoiceAmount, invoiceMark, shortAddr } from "../lib/bch";
+import { NETWORKS, type Invoice, invoiceAmount, invoiceMark, shortAddr, tokenAddress } from "../lib/bch";
 
 export function Ticket({
   inv,
@@ -13,6 +13,12 @@ export function Ticket({
   preview?: boolean;
 }) {
   const amt = invoiceAmount(inv);
+  let payTo = inv.a;
+  try {
+    if (inv.k) payTo = tokenAddress(inv.a); // tokens go to the token-aware form
+  } catch {
+    /* draft address still empty */
+  }
   const [whole, frac = ""] = amt.num.split(".");
   const created = inv.t ? new Date(inv.t * 1000) : null;
   return (
@@ -36,8 +42,8 @@ export function Ticket({
         <dl className="ticket-meta">
           <div>
             <dt>To</dt>
-            <dd className="mono" title={inv.a}>
-              {shortAddr(inv.a)}
+            <dd className="mono" title={payTo}>
+              {shortAddr(payTo)}
             </dd>
           </div>
           {created && (

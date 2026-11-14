@@ -252,8 +252,8 @@ export function Create() {
             </label>
           </div>
           {cur === "tok:custom" && (
-            <div className="row">
-              <label className="field grow">
+            <>
+              <label className="field">
                 <span>Token category</span>
                 <input
                   className="mono"
@@ -265,7 +265,8 @@ export function Create() {
                   aria-invalid={!!custom.c && !token}
                 />
               </label>
-              <label className="field cur">
+              <div className="row">
+              <label className="field grow">
                 <span>Decimals</span>
                 <input className="mono" inputMode="numeric" value={custom.d} onChange={(e) => setCustom({ ...custom, d: e.target.value })} />
               </label>
@@ -273,7 +274,8 @@ export function Create() {
                 <span>Ticker</span>
                 <input value={custom.y} maxLength={10} onChange={(e) => setCustom({ ...custom, y: e.target.value })} placeholder="TKN" />
               </label>
-            </div>
+              </div>
+            </>
           )}
           <small className="hint mono">
             {token

@@ -11,6 +11,7 @@ import {
   invoiceAmount,
   invoiceMark,
   satsToBch,
+  tokenAddress,
   unitsToToken,
 } from "../lib/bch";
 import { findPayment, watchAddress, type Payment } from "../lib/chain";
@@ -149,11 +150,11 @@ function PayInvoice({ inv }: { inv: Invoice }) {
               <div className="share">
                 <QR value={uri} size={176} label="Payment QR for any Bitcoin Cash wallet" />
                 <div className="share-actions">
-                  <p className="share-title">Scan with any BCH wallet</p>
+                  <p className="share-title">{inv.k ? `Scan with a CashTokens wallet` : "Scan with any BCH wallet"}</p>
                   <a className="btn-ink" href={uri}>
                     Open in wallet app
                   </a>
-                  <button type="button" className="btn-line" onClick={() => copy("addr", inv.a)}>
+                  <button type="button" className="btn-line" onClick={() => copy("addr", inv.k ? tokenAddress(inv.a) : inv.a)}>
                     {copied === "addr" ? "Copied" : "Copy address"}
                   </button>
                   <button type="button" className="btn-line" onClick={() => copy("amt", shown.num)}>
