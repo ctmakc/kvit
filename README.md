@@ -10,11 +10,15 @@ EMBER2026 community-choice address (CashTokens): `bitcoincash:zpln0flvp7gcx6qncy
 
 Freelancers and small shops get paid by sending a link. Kvit gives Bitcoin Cash that same link.
 
-1. **Make a ticket.** Your name, your BCH address (or connect your wallet and Kvit fills it), an amount in USD / CAD / EUR / BCH, what it is for. You get a link and a QR.
+1. **Make a ticket.** Your name, your BCH address (or connect your wallet and Kvit fills it), an amount in USD / CAD / EUR / BCH, or in a CashToken (PUSD on mainnet), what it is for. You get a link and a QR.
 2. **Your client opens it** and pays: scan the QR with any BCH wallet (BIP21), or press **Pay with WizardConnect**, scan once, approve one transaction in the wallet.
 3. **The ticket punches itself PAID** the moment the transaction reaches the mempool, then shows the block height once it confirms. Anyone holding the link sees the same receipt.
 
 No account, no backend, no custody. The ticket lives entirely inside the link.
+
+## Built during BLAZE (Nov 14–22)
+
+- **Token tickets (Nov 14).** A ticket can be priced in any fungible CashToken. Mainnet offers PUSD (ParyonUSD), so the price holds between invoice and payment; chipnet offers KVT, a test token minted for the demo; any other category can be entered by hand. The payer's wallet pays the exact token amount over WizardConnect, Kvit adds token change and BCH change, and the ticket punches PAID when that token output lands. The QR follows the CashTokens payment-URI draft (CHIP-2023-05: token-aware address, `c`, `f`, `s`). Chipnet proof: `68268841d36198aec12a198276f0b63597b2fb6dde1f2b4614a089aec61a0a67` (12.34 KVT).
 
 ## Try it as a judge (mainnet, about 5 US cents)
 
@@ -36,7 +40,9 @@ To try your own ticket: switch to **Mainnet**, paste your address, set $0.10, cr
 
 **Keys never leave the wallet.** WizardConnect shares only xpubs. Kvit builds the transaction, the wallet signs it.
 
-**Tokens are safe.** UTXOs carrying CashTokens are skipped during coin selection.
+**Token tickets.** For a token ticket `s` holds the token amount and `x` the satoshis riding on the token output; the last three digits of `x` mark the ticket, so the token price stays round (25.00 PUSD). The watcher matches category, token amount, satoshis and address. Coin selection spends only fungible coins of the ticket's category, never NFTs, and returns token change to the payer.
+
+**Tokens are safe on BCH tickets.** A plain BCH ticket never spends a coin that carries tokens.
 
 ## Tested end to end on chipnet
 
@@ -44,6 +50,10 @@ Real WizardConnect relay, real signing wallet, real chipnet transactions:
 
 - `e0d49f5c522db55f653e046c723adeed468327e54f8545e6e58215cb26223f8a` (local build)
 - `4a70a865a2229fbe76ec01ff5316d788ae1ebcae31924dbd1ad0e5a801a315be` (production build on kvit-cash.pages.dev)
+- `68268841d36198aec12a198276f0b63597b2fb6dde1f2b4614a089aec61a0a67` (token ticket, 12.34 KVT, Nov 14)
+- `ea268df2…` (token ticket, 7.50 KVT, Nov 14) and `76c5975a…` (tBCH regression after the builder rewrite)
+
+`app/scripts/mint-token.mjs` mints the KVT test token from the test wallet (chipnet only).
 
 Insufficient-funds, wrong-network address and broken-link states are handled in the UI.
 
@@ -70,7 +80,6 @@ React 18 + Vite + TypeScript, `@wizardconnect/react` / `core` / `dapp`, `@bitaut
 
 ## Roadmap
 
-- PUSD (ParyonUSD) tickets so the price holds between invoice and payment
 - Recurring tickets and a paid/unpaid list for the payee
 - One-script shop widget
 - Branded pages and accounting export for agencies (paid tier)

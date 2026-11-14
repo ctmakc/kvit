@@ -12,14 +12,17 @@ BLAZE fork rule: code before November 14 is pre-hackathon work, commit bec7d02 (
 Freelancers and small shops get paid by sending a link: Stripe, PayPal, Interac. In BCH the same moment means pasting an address, typing an amount and asking "did it arrive?" in chat.
 
 ### How it works
-1. The payee makes a ticket: name, BCH address (or connect a wallet and Kvit fills it), amount in USD / CAD / EUR / BCH, what it is for.
+1. The payee makes a ticket: name, BCH address (or connect a wallet and Kvit fills it), amount in USD / CAD / EUR / BCH or a CashToken (PUSD on mainnet), what it is for.
 2. Kvit gives a link and a QR. The whole ticket lives inside the link: no account, no backend.
 3. The client opens it and pays: any BCH wallet by QR (BIP21), or **Pay with WizardConnect**: one scan, one approval.
 4. The page watches the chain through public Fulcrum servers and punches the ticket **PAID** the moment the transaction lands, then shows the block height.
 
+### Built during BLAZE (Nov 14–22)
+- **Token tickets (Nov 14):** price a ticket in any fungible CashToken. PUSD (ParyonUSD) preset on mainnet so the price holds; KVT test token on chipnet; any category by hand. WizardConnect pays the exact token amount with token change and BCH change; the ticket punches PAID when the token output lands; the QR follows the CashTokens payment-URI draft (CHIP-2023-05). Chipnet proof tx `68268841d36198aec12a198276f0b63597b2fb6dde1f2b4614a089aec61a0a67`.
+
 ### Mainnet track checklist
 - Any judge can make a useful mainnet BCH transaction: open the demo, press **"Open the 0.0002 BCH tip-jar ticket"** and pay it (about 5 US cents), or make a $0.10 ticket to your own address.
-- WizardConnect integration: Kvit derives receive and change addresses from the shared xpubs (gap 20), selects UTXOs (token UTXOs are skipped), builds the transaction with libauth and sends `sign_transaction_request`. Keys stay in the wallet.
+- WizardConnect integration: Kvit derives receive and change addresses from the shared xpubs (gap 20), selects UTXOs (BCH tickets never touch token coins; token tickets spend only fungible coins of the ticket's category), builds the transaction with libauth and sends `sign_transaction_request`. Keys stay in the wallet.
 - Top-of-page banner with presentation, source code and the EMBER2026 CashTokens address.
 - Tested end to end on chipnet with a real signing WizardConnect wallet; production build tx `4a70a865a2229fbe76ec01ff5316d788ae1ebcae31924dbd1ad0e5a801a315be`.
 
@@ -31,4 +34,4 @@ Freelancers and small shops get paid by sending a link: Stripe, PayPal, Interac.
 React 18, Vite, TypeScript, @wizardconnect/react + core + dapp, @bitauth/libauth, @electrum-cash/network (Fulcrum WSS), qrcode-generator, Cloudflare Pages.
 
 ### Business potential
-Agencies, studios and market stalls already invoice by link. Kvit's core stays free; paid tier = branded ticket pages, recurring tickets and accounting export. Next on the roadmap: PUSD stablecoin tickets so the price holds between invoice and payment.
+Agencies, studios and market stalls already invoice by link. Kvit's core stays free; paid tier = branded ticket pages, recurring tickets and accounting export. PUSD stablecoin tickets shipped during BLAZE, so the price holds between invoice and payment.
