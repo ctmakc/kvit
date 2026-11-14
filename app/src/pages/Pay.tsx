@@ -1,5 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { type BuiltTx, type Invoice, InsufficientFunds, NETWORKS, bip21, decodeInvoice, satsToBch } from "../lib/bch";
+import {
+  type BuiltTx,
+  type Invoice,
+  InsufficientFunds,
+  InsufficientTokens,
+  NETWORKS,
+  TOKEN_OUT_SATS,
+  bip21,
+  decodeInvoice,
+  invoiceAmount,
+  invoiceMark,
+  satsToBch,
+  unitsToToken,
+} from "../lib/bch";
 import { findPayment, watchAddress, type Payment } from "../lib/chain";
 import { preparePayment, scanWallet, signAndSend } from "../lib/wallet";
 import { Ticket } from "../components/Ticket";
@@ -9,7 +22,7 @@ import { useWallet } from "../components/WalletProvider";
 type Step =
   | { k: "idle" }
   | { k: "scanning"; n: number }
-  | { k: "ready"; built: BuiltTx; balance: bigint }
+  | { k: "ready"; built: BuiltTx; balance: bigint; tokenBalance: bigint | null }
   | { k: "signing" }
   | { k: "sent"; txid: string }
   | { k: "error"; msg: string };
@@ -30,7 +43,12 @@ export function Pay({ token }: { token: string }) {
 
 function PayInvoice({ inv }: { inv: Invoice }) {
   const wc = useWallet();
-  const sats = BigInt(inv.s);
+  // BCH ticket: sats is the payment. Token ticket: sats ride on the token output and carry the mark.
+  const sats = inv.k ? BigInt(inv.x ?? TOKEN_OUT_SATS) : BigInt(inv.s);
+  const tokenAmt = inv.k ? BigInt(inv.s) : null;
+  const cat = inv.k?.c;
+  const shown = invoiceAmount(inv);
+  const coin = inv.n === "chip" ? "tBCH" : "BCH";
   const [paid, setPaid] = useState<Payment | null>(null);
   const [chainErr, setChainErr] = useState<string | null>(null);
   const [step, setStep] = useState<Step>({ k: "idle" });
@@ -40,13 +58,13 @@ function PayInvoice({ inv }: { inv: Invoice }) {
 
   const check = useCallback(async () => {
     try {
-      const p = await findPayment(inv.n, inv.a, sats);
+      const p = await findPayment(inv.n, inv.a, sats, cat && tokenAmt != null ? { category: cat, amount: tokenAmt } : undefined);
       setChainErr(null);
       if (p) setPaid(p);
     } catch (e) {
       setChainErr(String((e as Error).message || e));
     }
-  }, [inv.n, inv.a, sats]);
+  }, [inv.n, inv.a, sats, cat, tokenAmt]);
 
   useEffect(() => {
     let stop: (() => void) | undefined;
@@ -67,18 +85,26 @@ function PayInvoice({ inv }: { inv: Invoice }) {
     setStep({ k: "scanning", n: 0 });
     try {
       const utxos = await scanWallet(wc.manager, inv.n, (n) => setStep({ k: "scanning", n }));
-      const balance = utxos.reduce((s, u) => s + u.value, 0n);
-      const built = preparePayment(wc.manager, inv.n, utxos, inv.a, sats);
-      setStep({ k: "ready", built, balance });
+      const balance = utxos.filter((u) => !u.token).reduce((s, u) => s + u.value, 0n);
+      const tokenBalance = cat
+        ? utxos.filter((u) => u.token?.category === cat && !u.token.nft).reduce((s, u) => s + u.token!.amount, 0n)
+        : null;
+      const built = preparePayment(wc.manager, inv.n, utxos, inv);
+      setStep({ k: "ready", built, balance, tokenBalance });
     } catch (e) {
-      if (e instanceof InsufficientFunds)
+      if (e instanceof InsufficientTokens)
+        setStep({
+          k: "error",
+          msg: `This wallet holds ${unitsToToken(e.have, e.token.d)} ${e.token.y} on ${NETWORKS[inv.n].label}. The ticket asks for ${unitsToToken(e.need, e.token.d)} ${e.token.y}.`,
+        });
+      else if (e instanceof InsufficientFunds)
         setStep({
           k: "error",
           msg: `This wallet holds ${satsToBch(e.have)} ${inv.n === "chip" ? "tBCH" : "BCH"} on ${NETWORKS[inv.n].label}. The ticket needs about ${satsToBch(e.need)} ${inv.n === "chip" ? "tBCH" : "BCH"} including the fee.`,
         });
       else setStep({ k: "error", msg: String((e as Error).message || e) });
     }
-  }, [wc.manager, inv.n, inv.a, sats]);
+  }, [wc.manager, inv, cat]);
 
   // connected after pressing "Pay with wallet" → go straight to the scan
   useEffect(() => {
@@ -93,10 +119,10 @@ function PayInvoice({ inv }: { inv: Invoice }) {
     setStep({ k: "signing" });
     abort.current = new AbortController();
     try {
-      const prompt = `Pay ${satsToBch(sats)} BCH to ${inv.p || "payee"}${inv.m ? " — " + inv.m : ""}`;
+      const prompt = `Pay ${shown.num} ${shown.unit} to ${inv.p || "payee"}${inv.m ? " — " + inv.m : ""}`;
       const txid = await signAndSend(wc.manager, inv.n, built, prompt, abort.current.signal);
       setStep({ k: "sent", txid });
-      setPaid((p) => p ?? { txid, height: 0, value: sats });
+      setPaid((p) => p ?? { txid, height: 0, value: sats, tokenAmount: tokenAmt ?? undefined });
       setTimeout(check, 1500);
     } catch (e) {
       const err = e as Error;
@@ -130,7 +156,7 @@ function PayInvoice({ inv }: { inv: Invoice }) {
                   <button type="button" className="btn-line" onClick={() => copy("addr", inv.a)}>
                     {copied === "addr" ? "Copied" : "Copy address"}
                   </button>
-                  <button type="button" className="btn-line" onClick={() => copy("amt", satsToBch(sats))}>
+                  <button type="button" className="btn-line" onClick={() => copy("amt", shown.num)}>
                     {copied === "amt" ? "Copied" : "Copy exact amount"}
                   </button>
                 </div>
@@ -147,7 +173,8 @@ function PayInvoice({ inv }: { inv: Invoice }) {
               <span className="line">Paid.</span>
             </h1>
             <p className="lede">
-              {satsToBch(paid.value)} BCH reached {inv.p || "the payee"}
+              {inv.k && paid.tokenAmount != null ? `${unitsToToken(paid.tokenAmount, inv.k.d)} ${inv.k.y}` : `${satsToBch(paid.value)} ${coin}`} reached{" "}
+              {inv.p || "the payee"}
               {paid.height > 0 ? ` and is confirmed in block ${paid.height}.` : ". It is in the mempool and will confirm with the next block."}
             </p>
             <a className="btn-line wide" href={NETWORKS[inv.n].explorerTx + paid.txid} target="_blank" rel="noreferrer">
@@ -161,7 +188,9 @@ function PayInvoice({ inv }: { inv: Invoice }) {
           <>
             <h1 className="hero-title">
               <span className="line">{inv.p || "Someone"} asks for</span>
-              <span className="line mono amt">{satsToBch(sats)} BCH</span>
+              <span className="line mono amt">
+                {shown.num} {shown.unit}
+              </span>
             </h1>
             <p className="lede">
               Pay from any wallet with the QR, or connect a WizardConnect wallet and approve one transaction. This page
@@ -196,15 +225,28 @@ function PayInvoice({ inv }: { inv: Invoice }) {
                   <dl>
                     <div>
                       <dt>Pays</dt>
-                      <dd className="mono">{satsToBch(sats)} BCH</dd>
+                      <dd className="mono">
+                        {shown.num} {shown.unit}
+                        {inv.k && ` + ${sats} sats`}
+                      </dd>
                     </div>
                     <div>
                       <dt>Network fee</dt>
                       <dd className="mono">{step.built.fee.toString()} sats</dd>
                     </div>
+                    {inv.k && step.tokenBalance != null && (
+                      <div>
+                        <dt>{inv.k.y} balance</dt>
+                        <dd className="mono">
+                          {unitsToToken(step.tokenBalance, inv.k.d)} {inv.k.y}
+                        </dd>
+                      </div>
+                    )}
                     <div>
-                      <dt>Wallet balance</dt>
-                      <dd className="mono">{satsToBch(step.balance)} BCH</dd>
+                      <dt>{inv.k ? "BCH for fees" : "Wallet balance"}</dt>
+                      <dd className="mono">
+                        {satsToBch(step.balance)} {coin}
+                      </dd>
                     </div>
                   </dl>
                   <button type="button" className="btn-go" onClick={() => send(step.built)}>
@@ -245,10 +287,18 @@ function PayInvoice({ inv }: { inv: Invoice }) {
               )}
             </div>
             {chainErr && <p className="hint err">Chain watcher: {chainErr}. Retrying.</p>}
-            <p className="fine">
-              Exact amount matters: the last digits ({inv.s.slice(-3)}) tell this ticket apart from other payments to the
-              same address.
-            </p>
+            {inv.k ? (
+              <p className="fine">
+                Token ticket: {shown.num} {shown.unit} travel on an output of exactly {sats.toString()} sats. The last
+                digits ({invoiceMark(inv)}) tell this ticket apart from other payments to the same address. Wallets that
+                read token payment links (CHIP-2023-05) fill both in from the QR.
+              </p>
+            ) : (
+              <p className="fine">
+                Exact amount matters: the last digits ({invoiceMark(inv)}) tell this ticket apart from other payments to the
+                same address.
+              </p>
+            )}
           </>
         )}
       </section>

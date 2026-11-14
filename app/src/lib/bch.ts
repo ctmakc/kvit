@@ -104,6 +104,13 @@ export function shortAddr(a: string): string {
 
 // ---------- invoice links ----------
 
+/** A fungible CashToken an invoice is priced in. */
+export interface TokenRef {
+  c: string; // category id, hex as shown by explorers
+  d: number; // decimals
+  y: string; // ticker
+}
+
 export interface Invoice {
   v: 1;
   n: NetId;
@@ -113,6 +120,46 @@ export interface Invoice {
   p: string; // payee name
   f?: { v: string; c: string }; // fiat shown at creation, display only
   t: number; // created, unix seconds
+  /** Token ticket: `s` is the token amount in base units, `x` the satoshis riding on the token output (its tail is the ticket mark). */
+  k?: TokenRef;
+  x?: string;
+}
+
+export const TOKEN_OUT_SATS = 1000n;
+
+export function unitsToToken(u: bigint, d: number): string {
+  if (d === 0) return u.toString();
+  const base = 10n ** BigInt(d);
+  const neg = u < 0n;
+  const v = neg ? -u : u;
+  return (neg ? "-" : "") + (v / base).toString() + "." + (v % base).toString().padStart(d, "0");
+}
+
+export function tokenToUnits(str: string, d: number): bigint | null {
+  const t = str.trim().replace(",", ".");
+  const re = d > 0 ? new RegExp(`^\\d*(\\.\\d{0,${d}})?$`) : /^\d+$/;
+  if (!re.test(t) || t === "" || t === ".") return null;
+  const [w, f = ""] = t.split(".");
+  return BigInt(w || "0") * 10n ** BigInt(d) + BigInt((f + "0".repeat(d)).slice(0, d) || "0");
+}
+
+/** Amount as the payer reads it: "0.0123 BCH" or "25.00 PUSD". */
+export function invoiceAmount(inv: Invoice): { num: string; unit: string } {
+  if (inv.k) return { num: unitsToToken(BigInt(inv.s), inv.k.d), unit: inv.k.y };
+  return { num: satsToBch(BigInt(inv.s)), unit: inv.n === "chip" ? "tBCH" : "BCH" };
+}
+
+/** The last three digits that tell this ticket apart on a shared address. */
+export function invoiceMark(inv: Invoice): string {
+  return (inv.k ? inv.x ?? "" : inv.s).slice(-3);
+}
+
+export function tokenAddress(address: string): string {
+  const lb = cashAddressToLockingBytecode(address);
+  if (typeof lb === "string") throw new Error(lb);
+  const r = lockingBytecodeToCashAddress({ bytecode: lb.bytecode, prefix: lb.prefix, tokenSupport: true });
+  if (typeof r === "string") throw new Error(r);
+  return r.address;
 }
 
 function b64urlEncode(s: string): string {
@@ -136,7 +183,15 @@ export function decodeInvoice(token: string): Invoice | null {
     const o = JSON.parse(b64urlDecode(token));
     if (o.v !== 1 || (o.n !== "main" && o.n !== "chip")) return null;
     if (!normalizeAddress(o.a, o.n)) return null;
-    if (!/^\d+$/.test(o.s) || BigInt(o.s) < DUST) return null;
+    if (!/^\d+$/.test(o.s)) return null;
+    let k: TokenRef | undefined;
+    let x: string | undefined;
+    if (o.k) {
+      if (!/^[0-9a-f]{64}$/.test(String(o.k.c)) || !Number.isInteger(o.k.d) || o.k.d < 0 || o.k.d > 18) return null;
+      if (!/^\d+$/.test(String(o.x)) || BigInt(o.x) < TOKEN_OUT_SATS || BigInt(o.s) < 1n) return null;
+      k = { c: o.k.c, d: o.k.d, y: String(o.k.y ?? "").replace(/[^\w.$-]/g, "").slice(0, 10) || "tokens" };
+      x = String(o.x);
+    } else if (BigInt(o.s) < DUST) return null;
     return {
       v: 1,
       n: o.n,
@@ -146,6 +201,7 @@ export function decodeInvoice(token: string): Invoice | null {
       p: String(o.p ?? "").slice(0, 60),
       f: o.f && typeof o.f.v === "string" ? { v: String(o.f.v).slice(0, 20), c: String(o.f.c).slice(0, 5) } : undefined,
       t: Number(o.t) || 0,
+      ...(k ? { k, x } : {}),
     };
   } catch {
     return null;
@@ -160,6 +216,15 @@ export function uniqueAmount(base: bigint): bigint {
 
 export function bip21(inv: Invoice): string {
   const q = new URLSearchParams();
+  if (inv.k) {
+    // CHIP-2023-05 / chip-paypro token request: token-aware address, c = category, f = fungible amount, s = satoshis
+    q.set("c", inv.k.c);
+    q.set("f", inv.s);
+    q.set("s", inv.x ?? TOKEN_OUT_SATS.toString());
+    if (inv.m) q.set("message", inv.m);
+    if (inv.p) q.set("label", inv.p);
+    return `${tokenAddress(inv.a)}?${q.toString().replace(/\+/g, "%20")}`;
+  }
   q.set("amount", satsToBch(BigInt(inv.s)));
   if (inv.m) q.set("message", inv.m);
   if (inv.p) q.set("label", inv.p);
@@ -177,6 +242,7 @@ export interface Utxo {
   path: "receive" | "change";
   index: number;
   address: string;
+  token?: { category: string; amount: bigint; nft: boolean };
 }
 
 export interface BuiltTx {
@@ -191,10 +257,11 @@ export interface BuiltTx {
 
 const P2PKH_IN = 148n; // schnorr-signed P2PKH input, upper bound
 const P2PKH_OUT = 34n;
+const TOKEN_OUT = 34n + 44n; // P2PKH output plus a fungible token prefix (category, bitfield, amount up to 9 bytes)
 const TX_OVERHEAD = 10n;
 
-export function estimateSize(nIn: number, nOut: number): bigint {
-  return TX_OVERHEAD + P2PKH_IN * BigInt(nIn) + P2PKH_OUT * BigInt(nOut);
+export function estimateSize(nIn: number, nOut: number, nTokenOut = 0): bigint {
+  return TX_OVERHEAD + P2PKH_IN * BigInt(nIn) + P2PKH_OUT * BigInt(nOut) + TOKEN_OUT * BigInt(nTokenOut);
 }
 
 export class InsufficientFunds extends Error {
@@ -203,43 +270,89 @@ export class InsufficientFunds extends Error {
   }
 }
 
+export class InsufficientTokens extends Error {
+  constructor(public have: bigint, public need: bigint, public token: TokenRef) {
+    super(`Wallet has ${unitsToToken(have, token.d)} ${token.y}, needs ${unitsToToken(need, token.d)} ${token.y}`);
+  }
+}
+
+type TokenOutput = Output & { token?: { category: Uint8Array; amount: bigint } };
+
+/**
+ * Pay `amount` sats to `to`, or — with `token` — pay `token.amount` fungible tokens to `to`
+ * on an output carrying `amount` sats. Token change and BCH change go to `changeLockingBytecode`.
+ */
 export function buildPayment(opts: {
   utxos: Utxo[];
   to: string;
   amount: bigint;
   changeLockingBytecode: Uint8Array;
   feePerByte?: bigint;
+  token?: { ref: TokenRef; amount: bigint };
 }): BuiltTx {
   const feeRate = opts.feePerByte ?? 1n;
-  // confirmed first, then larger first
-  const pool = [...opts.utxos].sort((a, b) =>
-    (a.height > 0 ? 0 : 1) - (b.height > 0 ? 0 : 1) || (b.value > a.value ? 1 : b.value < a.value ? -1 : 0),
-  );
+  const byConfThenSize = (a: Utxo, b: Utxo) =>
+    (a.height > 0 ? 0 : 1) - (b.height > 0 ? 0 : 1) || (b.value > a.value ? 1 : b.value < a.value ? -1 : 0);
+
+  const outputs: TokenOutput[] = [];
   const picked: Utxo[] = [];
-  let sum = 0n;
+  let nTokenOut = 0;
+  if (opts.token) {
+    const cat = opts.token.ref.c;
+    const tokPool = opts.utxos
+      .filter((u) => u.token && u.token.category === cat && !u.token.nft)
+      .sort((a, b) => (b.token!.amount > a.token!.amount ? 1 : b.token!.amount < a.token!.amount ? -1 : 0));
+    let have = 0n;
+    for (const u of tokPool) {
+      if (have >= opts.token.amount) break;
+      picked.push(u);
+      have += u.token!.amount;
+    }
+    if (have < opts.token.amount) {
+      throw new InsufficientTokens(tokPool.reduce((s, u) => s + u.token!.amount, 0n), opts.token.amount, opts.token.ref);
+    }
+    const category = hexToBin(cat);
+    outputs.push({ lockingBytecode: lockingBytecodeOf(opts.to), valueSatoshis: opts.amount, token: { category, amount: opts.token.amount } });
+    nTokenOut = 1;
+    if (have > opts.token.amount) {
+      outputs.push({ lockingBytecode: opts.changeLockingBytecode, valueSatoshis: TOKEN_OUT_SATS, token: { category, amount: have - opts.token.amount } });
+      nTokenOut = 2;
+    }
+  } else {
+    outputs.push({ lockingBytecode: lockingBytecodeOf(opts.to), valueSatoshis: opts.amount });
+  }
+  const need = outputs.reduce((s, o) => s + o.valueSatoshis, 0n);
+  // token inputs carry sats too; top up with plain BCH coins
+  let sum = picked.reduce((s, u) => s + u.value, 0n);
+  const pool = opts.utxos.filter((u) => !u.token).sort(byConfThenSize);
   let fee = -1n;
   let change = 0n;
-  for (const u of pool) {
-    picked.push(u);
-    sum += u.value;
-    const feeWithChange = estimateSize(picked.length, 2) * feeRate;
-    const feeNoChange = estimateSize(picked.length, 1) * feeRate;
-    if (sum >= opts.amount + feeWithChange + DUST) {
+  const settle = () => {
+    const feeWithChange = estimateSize(picked.length, outputs.length - nTokenOut + 1, nTokenOut) * feeRate;
+    const feeNoChange = estimateSize(picked.length, outputs.length - nTokenOut, nTokenOut) * feeRate;
+    if (picked.length && sum >= need + feeWithChange + DUST) {
       fee = feeWithChange;
-      change = sum - opts.amount - feeWithChange;
-      break;
+      change = sum - need - feeWithChange;
+      return true;
     }
-    if (sum >= opts.amount + feeNoChange) {
-      fee = sum - opts.amount; // leftover below dust goes to the miner
+    if (picked.length && sum >= need + feeNoChange) {
+      fee = sum - need; // leftover below dust goes to the miner
       change = 0n;
-      break;
+      return true;
+    }
+    return false;
+  };
+  if (!settle()) {
+    for (const u of pool) {
+      picked.push(u);
+      sum += u.value;
+      if (settle()) break;
     }
   }
   if (fee < 0n) {
-    const total = pool.reduce((s, u) => s + u.value, 0n);
-    throw new InsufficientFunds(total, opts.amount + estimateSize(Math.max(pool.length, 1), 1) * feeRate);
+    const total = opts.utxos.reduce((s, u) => s + u.value, 0n);
+    throw new InsufficientFunds(total, need + estimateSize(Math.max(picked.length, 1), outputs.length, nTokenOut) * feeRate);
   }
-  const outputs: Output[] = [{ lockingBytecode: lockingBytecodeOf(opts.to), valueSatoshis: opts.amount }];
   if (change > 0n) outputs.push({ lockingBytecode: opts.changeLockingBytecode, valueSatoshis: change });
   const inputs: Input[] = picked.map((u) => ({
     outpointTransactionHash: hexToBin(u.txid),
@@ -252,6 +365,7 @@ export function buildPayment(opts: {
     ...inputs[i],
     lockingBytecode: u.lockingBytecode,
     valueSatoshis: u.value,
+    ...(u.token ? { token: { category: hexToBin(u.token.category), amount: u.token.amount } } : {}),
   }));
   const hex = binToHex(encodeTransaction(tx));
   return {

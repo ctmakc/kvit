@@ -3,7 +3,9 @@ import type { DappConnectionManager } from "@wizardconnect/dapp";
 import { binToHex, stringify } from "@bitauth/libauth";
 import {
   type BuiltTx,
+  type Invoice,
   type NetId,
+  TOKEN_OUT_SATS,
   type Utxo,
   buildPayment,
   lockingBytecodeOf,
@@ -45,6 +47,9 @@ export async function scanWallet(mgr: DappConnectionManager, net: NetId, onProgr
               path: p.name,
               index: i,
               address,
+              ...(u.token_data
+                ? { token: { category: u.token_data.category, amount: BigInt(u.token_data.amount ?? 0), nft: !!u.token_data.nft } }
+                : {}),
             });
           }
           onProgress?.(++done);
@@ -63,8 +68,23 @@ export function changeLockingBytecode(mgr: DappConnectionManager, net: NetId): U
   return lockingBytecodeOf(pubkeyToAddress(pk, net));
 }
 
-export function preparePayment(mgr: DappConnectionManager, net: NetId, utxos: Utxo[], to: string, amount: bigint): BuiltTx {
-  return buildPayment({ utxos, to, amount, changeLockingBytecode: changeLockingBytecode(mgr, net) });
+export function preparePayment(
+  mgr: DappConnectionManager,
+  net: NetId,
+  utxos: Utxo[],
+  inv: Invoice,
+): BuiltTx {
+  const changeLb = changeLockingBytecode(mgr, net);
+  if (inv.k) {
+    return buildPayment({
+      utxos,
+      to: inv.a,
+      amount: BigInt(inv.x ?? TOKEN_OUT_SATS),
+      token: { ref: inv.k, amount: BigInt(inv.s) },
+      changeLockingBytecode: changeLb,
+    });
+  }
+  return buildPayment({ utxos, to: inv.a, amount: BigInt(inv.s), changeLockingBytecode: changeLb });
 }
 
 /** Ask the wallet to sign, then broadcast ourselves (the wallet may also broadcast; duplicates are fine). */

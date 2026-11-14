@@ -11,3 +11,8 @@ export const EMBER_ADDRESS = "bitcoincash:zpln0flvp7gcx6qncy6rrrtj8eqnzman3syf09
 export const TIP_ADDRESS = "bitcoincash:qpln0flvp7gcx6qncy6rrrtj8eqnzman3srrumwvxn";
 export const DAPP_NAME = "Kvit";
 export const DAPP_ICON = "https://kvit-cash.pages.dev/favicon.svg";
+/** Fungible CashTokens offered as ticket currencies. PUSD: ParyonUSD (BLAZE sponsor), category and decimals as published by bchblaze.cash. */
+export const TOKEN_PRESETS: Record<"main" | "chip", { c: string; d: number; y: string; label: string }[]> = {
+  main: [{ c: "2469acc5afa4b10cb5b5c04afb89c3a3ffd61c5da9c01e26d00951cae2a02544", d: 2, y: "PUSD", label: "PUSD (ParyonUSD)" }],
+  chip: [{ c: "9310e72062ad6e01c3fb5b0b8c8c5c3b7012113682fe30b5dbd863b91d5bd379", d: 2, y: "KVT", label: "KVT (Kvit test token)" }],
+};

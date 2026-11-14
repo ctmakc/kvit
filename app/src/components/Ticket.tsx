@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { NETWORKS, type Invoice, satsToBch, shortAddr } from "../lib/bch";
+import { NETWORKS, type Invoice, invoiceAmount, invoiceMark, shortAddr } from "../lib/bch";
 
 export function Ticket({
   inv,
@@ -12,8 +12,8 @@ export function Ticket({
   children?: ReactNode;
   preview?: boolean;
 }) {
-  const bch = satsToBch(BigInt(inv.s));
-  const [whole, frac = ""] = bch.split(".");
+  const amt = invoiceAmount(inv);
+  const [whole, frac = ""] = amt.num.split(".");
   const created = inv.t ? new Date(inv.t * 1000) : null;
   return (
     <article className={"ticket" + (paid ? " is-paid" : "") + (preview ? " is-preview" : "")} aria-live="polite">
@@ -26,7 +26,7 @@ export function Ticket({
         <p className="ticket-amount">
           <span className="mono">{whole}</span>
           {frac && <span className="mono frac">.{frac}</span>}
-          <span className="unit">BCH</span>
+          <span className="unit">{amt.unit}</span>
         </p>
         {inv.f && (
           <p className="ticket-fiat mono">
@@ -48,7 +48,7 @@ export function Ticket({
           )}
           <div>
             <dt>Ref</dt>
-            <dd className="mono">…{inv.s.slice(-3)}</dd>
+            <dd className="mono">…{invoiceMark(inv)}</dd>
           </div>
         </dl>
         {children}

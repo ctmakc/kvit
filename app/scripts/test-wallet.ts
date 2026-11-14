@@ -29,6 +29,20 @@ const relayKey = hexToBin(generateKeyExchangeCredentials().privateKey);
 const compiler = walletTemplateToCompilerBch(walletTemplateP2pkhNonHd);
 const autoReject = process.argv.includes("--reject");
 
+// sourceOutputs travel as libauth extended JSON ("<Uint8Array: 0x…>", "<bigint: 1n>")
+function unmarkBin(v: any): Uint8Array {
+  if (v instanceof Uint8Array) return v;
+  const m = /^<Uint8Array: 0x([0-9a-f]*)>$/i.exec(String(v));
+  return hexToBin(m ? m[1] : String(v));
+}
+function unmarkToken(t: any) {
+  return {
+    category: unmarkBin(t.category),
+    amount: toBigInt(t.amount ?? 0),
+    ...(t.nft ? { nft: { capability: t.nft.capability, commitment: unmarkBin(t.nft.commitment ?? "") } } : {}),
+  };
+}
+
 const adapter: WalletAdapter = {
   walletName: "Kvit chipnet test wallet",
   walletIcon: "",
@@ -59,6 +73,8 @@ const adapter: WalletAdapter = {
           data: { keys: { privateKeys: { key: node.privateKey } } },
           script: "unlock",
           valueSatoshis: toBigInt(src[i].valueSatoshis),
+          // token inputs: the signature covers the spent token, so it must reach the compiler
+          ...(src[i].token ? { token: unmarkToken(src[i].token) } : {}),
         },
       };
     });

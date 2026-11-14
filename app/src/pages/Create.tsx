@@ -3,11 +3,15 @@ import {
   type Invoice,
   type NetId,
   DUST,
+  TOKEN_OUT_SATS,
+  type TokenRef,
   addressNet,
   bchToSats,
   encodeInvoice,
   normalizeAddress,
   satsToBch,
+  tokenToUnits,
+  unitsToToken,
   uniqueAmount,
 } from "../lib/bch";
 import { bchPrice } from "../lib/chain";
@@ -15,9 +19,10 @@ import { walletAddress } from "../lib/wallet";
 import { Ticket } from "../components/Ticket";
 import { QR } from "../components/QR";
 import { useWallet } from "../components/WalletProvider";
-import { TIP_ADDRESS } from "../config";
+import { TIP_ADDRESS, TOKEN_PRESETS } from "../config";
 
-type Cur = "USD" | "CAD" | "EUR" | "BCH";
+type Cur = "USD" | "CAD" | "EUR" | "BCH" | `tok:${string}`;
+const FIAT = ["USD", "CAD", "EUR"];
 const DRAFT_KEY = "kvit-draft";
 
 function loadDraft() {
@@ -35,7 +40,8 @@ export function Create() {
   const [name, setName] = useState<string>(d.name ?? "");
   const [addr, setAddr] = useState<string>(d.addr ?? "");
   const [amount, setAmount] = useState<string>("");
-  const [cur, setCur] = useState<Cur>(d.cur ?? "USD");
+  const [cur, setCur] = useState<Cur>(typeof d.cur === "string" && !d.cur.startsWith("tok:") ? d.cur : "USD");
+  const [custom, setCustom] = useState<{ c: string; d: string; y: string }>({ c: "", d: "0", y: "" });
   const [memo, setMemo] = useState<string>("");
   const [rates, setRates] = useState<Record<string, number> | null>(null);
   const [rateErr, setRateErr] = useState(false);
@@ -69,7 +75,21 @@ export function Create() {
   }, [addr]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const payee = normalizeAddress(addr, net);
+  const token: TokenRef | null = useMemo(() => {
+    if (!cur.startsWith("tok:")) return null;
+    const id = cur.slice(4);
+    if (id !== "custom") {
+      const p = TOKEN_PRESETS[net].find((t) => t.c === id);
+      return p ? { c: p.c, d: p.d, y: p.y } : null;
+    }
+    const c = custom.c.trim().toLowerCase();
+    const dd = Number(custom.d);
+    if (!/^[0-9a-f]{64}$/.test(c) || !Number.isInteger(dd) || dd < 0 || dd > 18) return null;
+    return { c, d: dd, y: custom.y.trim().replace(/[^\w.$-]/g, "").slice(0, 10) || "tokens" };
+  }, [cur, net, custom]);
+  const tokenUnits = token ? tokenToUnits(amount, token.d) : null;
   const baseSats = useMemo(() => {
+    if (cur.startsWith("tok:")) return null;
     if (cur === "BCH") return bchToSats(amount);
     const v = Number(amount.replace(",", "."));
     const r = rates?.[cur.toLowerCase()];
@@ -78,10 +98,17 @@ export function Create() {
   }, [amount, cur, rates]);
   const [tail, setTail] = useState(() => BigInt(1 + Math.floor(Math.random() * 998)));
   const sats = baseSats != null ? (baseSats / 1000n) * 1000n + tail : null;
+  // token ticket: the mark rides on the token output's satoshis
+  const tokSats = TOKEN_OUT_SATS + tail;
+  const amountKey = token ? `${token.c}:${tokenUnits ?? ""}` : (sats ?? 0n).toString();
 
   useEffect(() => {
-    if (link && linkSats !== (sats ?? 0n).toString()) setLink(null);
-  }, [sats]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (link && linkSats !== amountKey) setLink(null);
+  }, [amountKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  // a preset of the other network cannot stay selected
+  useEffect(() => {
+    if (cur.startsWith("tok:") && cur !== "tok:custom" && !TOKEN_PRESETS[net].some((t) => "tok:" + t.c === cur)) setCur("USD");
+  }, [net]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (link) setLink(null);
   }, [memo, name, addr, net]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -92,27 +119,28 @@ export function Create() {
     }
   }, [link]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const tooSmall = sats != null && sats < DUST + 1000n;
-  const fiat = cur !== "BCH" && amount ? { v: Number(amount.replace(",", ".")).toFixed(2), c: cur } : undefined;
-  const ready = !!payee && sats != null && !tooSmall;
+  const tooSmall = !token && sats != null && sats < DUST + 1000n;
+  const fiat = FIAT.includes(cur) && amount ? { v: Number(amount.replace(",", ".")).toFixed(2), c: cur } : undefined;
+  const ready = !!payee && (token ? tokenUnits != null && tokenUnits > 0n : sats != null && !tooSmall);
 
   const draft: Invoice = {
     v: 1,
     n: net,
     a: payee ?? (net === "main" ? "bitcoincash:" : "bchtest:"),
-    s: (sats ?? 0n).toString(),
+    s: (token ? tokenUnits ?? 0n : sats ?? 0n).toString(),
     m: memo,
     p: name,
     f: fiat,
     t: Math.floor(Date.now() / 1000),
+    ...(token ? { k: token, x: tokSats.toString() } : {}),
   };
 
   function create() {
     if (!ready) return;
-    const inv: Invoice = { ...draft, a: payee!, s: sats!.toString() };
+    const inv: Invoice = { ...draft, a: payee! };
     const url = `${location.origin}${location.pathname}#/pay/${encodeInvoice(inv)}`;
     setLink(url);
-    setLinkSats(sats!.toString());
+    setLinkSats(amountKey);
     setCopied(false);
   }
 
@@ -202,7 +230,7 @@ export function Create() {
                 inputMode="decimal"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                placeholder={cur === "BCH" ? "0.05" : "25.00"}
+                placeholder={cur === "BCH" ? "0.05" : token && token.d === 0 ? "100" : "25.00"}
               />
             </label>
             <label className="field cur">
@@ -212,11 +240,49 @@ export function Create() {
                 <option>CAD</option>
                 <option>EUR</option>
                 <option>BCH</option>
+                <optgroup label="CashTokens">
+                  {TOKEN_PRESETS[net].map((t) => (
+                    <option key={t.c} value={"tok:" + t.c}>
+                      {t.label}
+                    </option>
+                  ))}
+                  <option value="tok:custom">Other token…</option>
+                </optgroup>
               </select>
             </label>
           </div>
+          {cur === "tok:custom" && (
+            <div className="row">
+              <label className="field grow">
+                <span>Token category</span>
+                <input
+                  className="mono"
+                  value={custom.c}
+                  onChange={(e) => setCustom({ ...custom, c: e.target.value })}
+                  placeholder="64 hex characters"
+                  spellCheck={false}
+                  autoComplete="off"
+                  aria-invalid={!!custom.c && !token}
+                />
+              </label>
+              <label className="field cur">
+                <span>Decimals</span>
+                <input className="mono" inputMode="numeric" value={custom.d} onChange={(e) => setCustom({ ...custom, d: e.target.value })} />
+              </label>
+              <label className="field cur">
+                <span>Ticker</span>
+                <input value={custom.y} maxLength={10} onChange={(e) => setCustom({ ...custom, y: e.target.value })} placeholder="TKN" />
+              </label>
+            </div>
+          )}
           <small className="hint mono">
-            {cur !== "BCH" && rates
+            {token
+              ? tokenUnits != null && tokenUnits > 0n
+                ? `Token ticket · asks ${unitsToToken(tokenUnits, token.d)} ${token.y} on a ${tokSats} sat output`
+                : `Amount in ${token.y}, up to ${token.d} decimals.`
+              : cur === "tok:custom"
+                ? "Paste the token category (the genesis transaction id)."
+                : cur !== "BCH" && rates
               ? `1 BCH = ${rates[cur.toLowerCase()]?.toLocaleString("en-US")} ${cur}` +
                 (sats != null ? ` · ticket asks ${satsToBch(sats)} BCH` : "")
               : cur !== "BCH" && rateErr

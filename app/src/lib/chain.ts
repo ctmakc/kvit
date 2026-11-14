@@ -44,13 +44,14 @@ export interface RawUnspent {
   tx_pos: number;
   value: number;
   height: number;
-  token_data?: unknown;
+  token_data?: { category: string; amount: string; nft?: unknown };
 }
 
+/** All coins on the address, token-carrying ones included (callers decide what to spend). */
 export async function listUnspent(net: NetId, address: string): Promise<RawUnspent[]> {
   const sh = scriptHashOf(lockingBytecodeOf(address));
   const r = await req<RawUnspent[]>(net, "blockchain.scripthash.listunspent", sh, "include_tokens");
-  return (r || []).filter((u) => !u.token_data);
+  return r || [];
 }
 
 export async function history(net: NetId, address: string): Promise<{ tx_hash: string; height: number }[]> {
@@ -80,10 +81,19 @@ export interface Payment {
   txid: string;
   height: number;
   value: bigint;
+  tokenAmount?: bigint;
 }
 
-/** Find a transaction that pays exactly `sats` to `address`. */
-export async function findPayment(net: NetId, address: string, sats: bigint): Promise<Payment | null> {
+/**
+ * Find a transaction that pays exactly `sats` to `address`;
+ * with `token`, an output carrying exactly `token.amount` of `token.category` on exactly `sats`.
+ */
+export async function findPayment(
+  net: NetId,
+  address: string,
+  sats: bigint,
+  token?: { category: string; amount: bigint },
+): Promise<Payment | null> {
   const lb = binToHex(lockingBytecodeOf(address));
   const h = await history(net, address);
   // newest first: mempool (height <= 0) then highest block
@@ -92,9 +102,13 @@ export async function findPayment(net: NetId, address: string, sats: bigint): Pr
     const tx = decodeTransaction(hexToBin(await rawTx(net, item.tx_hash)));
     if (typeof tx === "string") continue;
     for (const o of tx.outputs) {
-      if (o.valueSatoshis === sats && binToHex(o.lockingBytecode) === lb) {
-        return { txid: item.tx_hash, height: item.height, value: o.valueSatoshis };
+      if (o.valueSatoshis !== sats || binToHex(o.lockingBytecode) !== lb) continue;
+      if (token) {
+        if (!o.token || o.token.nft || binToHex(o.token.category) !== token.category || o.token.amount !== token.amount) continue;
+        return { txid: item.tx_hash, height: item.height, value: o.valueSatoshis, tokenAmount: o.token.amount };
       }
+      if (o.token) continue; // a token output is not a BCH payment
+      return { txid: item.tx_hash, height: item.height, value: o.valueSatoshis };
     }
   }
   return null;
