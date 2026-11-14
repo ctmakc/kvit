@@ -6,7 +6,7 @@
 - **Source (MIT):** https://github.com/ctmakc/kvit
 - **EMBER2026 address:** bitcoincash:zpln0flvp7gcx6qncy6rrrtj8eqnzman3syf09q2eq
 
-Prep build made before the hackathon window. On November 14 the repo is forked and the starting snapshot (demo + code) gets linked in the site banner, as the BLAZE rules ask.
+BLAZE fork rule: code before November 14 is pre-hackathon work, commit bec7d02 (tag pre-blaze-1114, frozen demo https://pre-blaze.kvit-cash.pages.dev). Work for judging happens November 14–22 on branch blaze-1114: https://github.com/ctmakc/kvit/compare/bec7d02...blaze-1114 . The site banner links both.
 
 ### The problem
 Freelancers and small shops get paid by sending a link: Stripe, PayPal, Interac. In BCH the same moment means pasting an address, typing an amount and asking "did it arrive?" in chat.
