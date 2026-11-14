@@ -19,6 +19,7 @@ Freelancers and small shops get paid by sending a link: Stripe, PayPal, Interac.
 
 ### Built during BLAZE (Nov 14–22)
 - **Token tickets (Nov 14):** price a ticket in any fungible CashToken. PUSD (ParyonUSD) preset on mainnet so the price holds; KVT test token on chipnet; any category by hand. WizardConnect pays the exact token amount with token change and BCH change; the ticket punches PAID when the token output lands; the QR follows the CashTokens payment-URI draft (CHIP-2023-05). Chipnet proof tx `68268841d36198aec12a198276f0b63597b2fb6dde1f2b4614a089aec61a0a67`.
+- **Ticket book (Nov 14).** `#/tickets` keeps every ticket the payee created on this device (browser storage only, no server), rechecks open ones against the chain every minute, punches the stub PAID with the block height, totals paid and open amounts per network and currency, and exports the lot as CSV for bookkeeping. Chipnet proof: a ticket paid while the book was open, tx `ba86c25f29c347a71d7ffb89b645ab63e8128ca076b8a8f9c3d7a5f40d006505`.
 
 ### Mainnet track checklist
 - Any judge can make a useful mainnet BCH transaction: open the demo, press **"Open the 0.0002 BCH tip-jar ticket"** and pay it (about 5 US cents), or make a $0.10 ticket to your own address.
