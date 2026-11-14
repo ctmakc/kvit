@@ -20,6 +20,7 @@ import { Ticket } from "../components/Ticket";
 import { QR } from "../components/QR";
 import { useWallet } from "../components/WalletProvider";
 import { TIP_ADDRESS, TOKEN_PRESETS } from "../config";
+import { addTicket } from "../lib/book";
 
 type Cur = "USD" | "CAD" | "EUR" | "BCH" | `tok:${string}`;
 const FIAT = ["USD", "CAD", "EUR"];
@@ -138,7 +139,9 @@ export function Create() {
   function create() {
     if (!ready) return;
     const inv: Invoice = { ...draft, a: payee! };
-    const url = `${location.origin}${location.pathname}#/pay/${encodeInvoice(inv)}`;
+    const tok = encodeInvoice(inv);
+    const url = `${location.origin}${location.pathname}#/pay/${tok}`;
+    addTicket(tok);
     setLink(url);
     setLinkSats(amountKey);
     setCopied(false);
@@ -347,6 +350,9 @@ export function Create() {
                   )}
                   <a className="btn-line" href={link.slice(link.indexOf("#"))}>
                     Open as payer
+                  </a>
+                  <a className="share-book" href="#/tickets">
+                    Saved to your ticket book →
                   </a>
                 </div>
               </div>

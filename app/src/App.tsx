@@ -3,6 +3,7 @@ import { Banner } from "./components/Banner";
 import { WalletChip, WalletProvider } from "./components/WalletProvider";
 import { Create } from "./pages/Create";
 import { Pay } from "./pages/Pay";
+import { Tickets, useBookCount } from "./pages/Tickets";
 
 function useHash() {
   const [h, setH] = useState(location.hash);
@@ -20,6 +21,8 @@ function useHash() {
 export function App() {
   const h = useHash();
   const pay = h.match(/^#\/pay\/([A-Za-z0-9_-]+)/);
+  const book = /^#\/tickets/.test(h);
+  const n = useBookCount();
   return (
     <WalletProvider>
       <Banner />
@@ -34,9 +37,14 @@ export function App() {
           </svg>
           <span>Kvit</span>
         </a>
-        <WalletChip />
+        <nav className="top-nav">
+          <a href="#/tickets" className={"top-link" + (book ? " on" : "")} aria-current={book ? "page" : undefined}>
+            Tickets{n > 0 && <span className="mono">{n}</span>}
+          </a>
+          <WalletChip />
+        </nav>
       </header>
-      {pay ? <Pay key={pay[1]} token={pay[1]} /> : <Create />}
+      {pay ? <Pay key={pay[1]} token={pay[1]} /> : book ? <Tickets /> : <Create />}
       <footer className="foot">
         <div className="foot-how">
           <p>

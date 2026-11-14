@@ -15,6 +15,7 @@ import {
   unitsToToken,
 } from "../lib/bch";
 import { findPayment, watchAddress, type Payment } from "../lib/chain";
+import { markPaid } from "../lib/book";
 import { preparePayment, scanWallet, signAndSend } from "../lib/wallet";
 import { Ticket } from "../components/Ticket";
 import { QR } from "../components/QR";
@@ -39,10 +40,10 @@ export function Pay({ token }: { token: string }) {
       </main>
     );
   }
-  return <PayInvoice inv={inv} />;
+  return <PayInvoice inv={inv} tok={token} />;
 }
 
-function PayInvoice({ inv }: { inv: Invoice }) {
+function PayInvoice({ inv, tok }: { inv: Invoice; tok: string }) {
   const wc = useWallet();
   // BCH ticket: sats is the payment. Token ticket: sats ride on the token output and carry the mark.
   const sats = inv.k ? BigInt(inv.x ?? TOKEN_OUT_SATS) : BigInt(inv.s);
@@ -61,11 +62,14 @@ function PayInvoice({ inv }: { inv: Invoice }) {
     try {
       const p = await findPayment(inv.n, inv.a, sats, cat && tokenAmt != null ? { category: cat, amount: tokenAmt } : undefined);
       setChainErr(null);
-      if (p) setPaid(p);
+      if (p) {
+        setPaid(p);
+        markPaid(tok, p);
+      }
     } catch (e) {
       setChainErr(String((e as Error).message || e));
     }
-  }, [inv.n, inv.a, sats, cat, tokenAmt]);
+  }, [inv.n, inv.a, sats, cat, tokenAmt, tok]);
 
   useEffect(() => {
     let stop: (() => void) | undefined;
@@ -124,6 +128,7 @@ function PayInvoice({ inv }: { inv: Invoice }) {
       const txid = await signAndSend(wc.manager, inv.n, built, prompt, abort.current.signal);
       setStep({ k: "sent", txid });
       setPaid((p) => p ?? { txid, height: 0, value: sats, tokenAmount: tokenAmt ?? undefined });
+      markPaid(tok, { txid, height: 0 });
       setTimeout(check, 1500);
     } catch (e) {
       const err = e as Error;
