@@ -2,6 +2,7 @@
 
 - **Live demo:** https://kvit-cash.pages.dev
 - **Video (53 s):** https://youtu.be/iXSKTpkBw7Y
+- **BLAZE video (59 s), token tickets + ticket book:** https://youtu.be/BDpq3GY_Y74
 - **Presentation (Widget Factory template):** https://docs.google.com/presentation/d/1PJADVM7GjKn9ahjaYWb9c3Cs67QG2V_ECQD1o81QHUQ/edit?usp=sharing
 - **Source (MIT):** https://github.com/ctmakc/kvit
 - **EMBER2026 address:** bitcoincash:zpln0flvp7gcx6qncy6rrrtj8eqnzman3syf09q2eq
@@ -18,6 +19,8 @@ Freelancers and small shops get paid by sending a link: Stripe, PayPal, Interac.
 4. The page watches the chain through public Fulcrum servers and punches the ticket **PAID** the moment the transaction lands, then shows the block height.
 
 ### Built during BLAZE (Nov 14–22)
+Video of both features (59 s, chipnet, real signing WizardConnect wallet): https://youtu.be/BDpq3GY_Y74
+
 - **Token tickets (Nov 14):** price a ticket in any fungible CashToken. PUSD (ParyonUSD) preset on mainnet so the price holds; KVT test token on chipnet; any category by hand. WizardConnect pays the exact token amount with token change and BCH change; the ticket punches PAID when the token output lands; the QR follows the CashTokens payment-URI draft (CHIP-2023-05). Chipnet proof tx `68268841d36198aec12a198276f0b63597b2fb6dde1f2b4614a089aec61a0a67`.
 - **Ticket book (Nov 14).** `#/tickets` keeps every ticket the payee created on this device (browser storage only, no server), rechecks open ones against the chain every minute, punches the stub PAID with the block height, totals paid and open amounts per network and currency, and exports the lot as CSV for bookkeeping. Chipnet proof: a ticket paid while the book was open, tx `ba86c25f29c347a71d7ffb89b645ab63e8128ca076b8a8f9c3d7a5f40d006505`.
 

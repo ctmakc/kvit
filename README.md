@@ -1,6 +1,6 @@
 # Kvit — payment links for Bitcoin Cash
 
-**Live demo: https://kvit-cash.pages.dev** · Video (53 s): https://youtu.be/iXSKTpkBw7Y · Presentation (BCH BLAZE Widget Factory template): [Google Slides](https://docs.google.com/presentation/d/1PJADVM7GjKn9ahjaYWb9c3Cs67QG2V_ECQD1o81QHUQ/edit?usp=sharing) · [PDF](docs/kvit-widget-factory.pdf)
+**Live demo: https://kvit-cash.pages.dev** · Video (53 s): https://youtu.be/iXSKTpkBw7Y · BLAZE video (59 s, token tickets + ticket book): https://youtu.be/BDpq3GY_Y74 · Presentation (BCH BLAZE Widget Factory template): [Google Slides](https://docs.google.com/presentation/d/1PJADVM7GjKn9ahjaYWb9c3Cs67QG2V_ECQD1o81QHUQ/edit?usp=sharing) · [PDF](docs/kvit-widget-factory.pdf)
 
 EMBER2026 community-choice address (CashTokens): `bitcoincash:zpln0flvp7gcx6qncy6rrrtj8eqnzman3syf09q2eq`
 
@@ -17,6 +17,8 @@ Freelancers and small shops get paid by sending a link. Kvit gives Bitcoin Cash 
 No account, no backend, no custody. The ticket lives entirely inside the link.
 
 ## Built during BLAZE (Nov 14–22)
+
+Video of both features on chipnet with a real signing WizardConnect wallet (59 s): https://youtu.be/BDpq3GY_Y74 (script: `video/record_blaze.py`).
 
 - **Token tickets (Nov 14).** A ticket can be priced in any fungible CashToken. Mainnet offers PUSD (ParyonUSD), so the price holds between invoice and payment; chipnet offers KVT, a test token minted for the demo; any other category can be entered by hand. The payer's wallet pays the exact token amount over WizardConnect, Kvit adds token change and BCH change, and the ticket punches PAID when that token output lands. The QR follows the CashTokens payment-URI draft (CHIP-2023-05: token-aware address, `c`, `f`, `s`). Chipnet proof: `68268841d36198aec12a198276f0b63597b2fb6dde1f2b4614a089aec61a0a67` (12.34 KVT).
 - **Ticket book (Nov 14).** `#/tickets` keeps every ticket the payee created on this device (browser storage only, no server), rechecks open ones against the chain every minute, punches the stub PAID with the block height, totals paid and open amounts per network and currency, and exports the lot as CSV for bookkeeping. Chipnet proof: a ticket paid while the book was open, tx `ba86c25f29c347a71d7ffb89b645ab63e8128ca076b8a8f9c3d7a5f40d006505`.
